@@ -1,0 +1,8 @@
+body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 24px; }
+.container { max-width: 960px; margin: 0 auto; }
+.panel { padding: 16px; border: 1px solid #ddd; border-radius: 12px; margin: 16px 0; }
+.row { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+#preview { max-width: 420px; max-height: 420px; border: 1px dashed #bbb; padding: 8px; border-radius: 8px; }
+.status { margin-top: 8px; }
+.output { background: #111; color: #0f0; padding: 12px; border-radius: 8px; min-height: 160px; overflow:auto; }
+button { padding: 8px 14px; border-radius: 10px; border: 1px solid #999; cursor: pointer; }

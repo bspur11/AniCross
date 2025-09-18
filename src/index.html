@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AniCross OCR (dev)</title>
+  </head>
+  <body>
+    <main class="container">
+      <h1>AniCross OCR</h1>
+
+      <section class="panel">
+        <h2>1) Select an image</h2>
+        <input id="fileInput" type="file" accept="image/*" />
+        <div class="row">
+          <img id="preview" alt="preview" />
+          <canvas id="workCanvas" hidden></canvas>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>2) Run OCR</h2>
+        <button id="runBtn">Run OCR</button>
+        <div id="status" class="status"></div>
+        <pre id="output" class="output"></pre>
+      </section>
+    </main>
+  </body>
+</html>
