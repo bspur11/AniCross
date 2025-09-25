@@ -1,103 +1,109 @@
-// ! AniCross OCR main
 import './style.css';
 import { createWorker } from 'tesseract.js';
-import { autoTuneOcr } from './utils/ocrHelper.js';
+import { recognizeZones, cropPreprocessToBlob } from './utils/ocrHelper.js';
 
 window.addEventListener('DOMContentLoaded', () => {
-  const fileInput  = document.getElementById('fileInput');
-  const preview    = document.getElementById('preview');
-  const runBtn     = document.getElementById('runBtn');
-  const autoBtn    = document.getElementById('autoBtn');
-  const statusEl   = document.getElementById('status');
-  const outputEl   = document.getElementById('output');
-  const workCanvas = document.getElementById('workCanvas');
+  const fileInput = document.getElementById('fileInput');
+  const preview   = document.getElementById('preview');
+  const runBtn    = document.getElementById('runBtn');
+  const autoBtn   = document.getElementById('autoBtn');
+  const statusEl  = document.getElementById('status');
+  const outputEl  = document.getElementById('output');
+  const overlay   = document.getElementById('overlay');
 
   let imageFile = null;
 
-  console.log('autoBtn present:', !!document.getElementById('autoBtn'));
+  // ONE set of zones (normalized 0–1). Tweaked for your sample:
+  const zones = [
+    // top-right number bubble “424”
+    { name:'code',  rect:{ x:0.78, y:0.045, w:0.18, h:0.12 }, psm:7, whitelist:'0123456789', medianK:3, threshold:170, multiplier:1.2, offset:-30 },
+    // main name “Isabelle”
+    { name:'name',  rect:{ x:0.15, y:0.61,  w:0.70, h:0.13 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    // small left name “Marie”
+    { name:'left',  rect:{ x:0.06, y:0.74,  w:0.30, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    // small right name “Canela”
+    { name:'right', rect:{ x:0.64, y:0.74,  w:0.30, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    // bottom date “12/20”
+    { name:'date',  rect:{ x:0.45, y:0.88,  w:0.18, h:0.08 }, psm:7, whitelist:'0123456789/',                            medianK:3, threshold:180, multiplier:1.2, offset:-30 },
+  ];
 
-
-  async function fileToScaledBlob(file, maxSide = 1600, mime = 'image/png', quality = 0.92) {
-    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
-    const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-    const w = Math.round(img.width * scale);
-    const h = Math.round(img.height * scale);
-    workCanvas.width = w; workCanvas.height = h;
-    const ctx = workCanvas.getContext('2d');
-    ctx.drawImage(img, 0, 0, w, h);
-    const blob = await new Promise((res) => workCanvas.toBlob(res, mime, quality));
-    if (blob) return blob;
-    const dataUrl = workCanvas.toDataURL(mime, quality);
-    const bin = atob(dataUrl.split(',')[1]); const arr = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    return new Blob([arr], { type: mime });
+  function renderOverlay() {
+    if (!overlay || !preview.complete) return;
+    // get visible size of the <img>
+    const w = preview.clientWidth;
+    const h = preview.clientHeight;
+    overlay.innerHTML = '';
+    zones.forEach(z => {
+      const box = document.createElement('div');
+      box.className = 'zbox';
+      box.dataset.name = z.name;
+      box.style.left   = `${z.rect.x * w}px`;
+      box.style.top    = `${z.rect.y * h}px`;
+      box.style.width  = `${z.rect.w * w}px`;
+      box.style.height = `${z.rect.h * h}px`;
+      overlay.appendChild(box);
+    });
   }
 
-  fileInput.addEventListener('change', () => {
+  fileInput?.addEventListener('change', () => {
     imageFile = fileInput.files?.[0] || null;
     if (!imageFile) return;
     preview.src = URL.createObjectURL(imageFile);
     outputEl.textContent = '';
-    statusEl.textContent = 'Ready to OCR…';
+    statusEl.textContent = 'Ready…';
+    preview.onload = renderOverlay; // draw boxes when image is loaded
   });
 
-  // ! Simple OCR (one shot)
+  // (kept) quick full-frame OCR
   runBtn?.addEventListener('click', async () => {
     if (!imageFile) { statusEl.textContent = 'Please select an image first.'; return; }
-    outputEl.textContent = ''; statusEl.textContent = 'Starting OCR…';
-
-    const sourceBlob = await fileToScaledBlob(imageFile);
+    statusEl.textContent = 'Starting OCR…';
     const worker = await createWorker('eng');
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/().,% ',
-      preserve_interword_spaces: '1',
-      user_defined_dpi: '300',
-      tessedit_pageseg_mode: '6',
-    });
-
     try {
-      const { data } = await worker.recognize(sourceBlob);
-      outputEl.textContent = `// ! OCR Result\n// * avg confidence: ${Math.round(data?.confidence ?? 0)}\n\n${data?.text || ''}`;
+      const { data } = await worker.recognize(imageFile);
+      outputEl.textContent = `// OCR\n${data?.text || ''}`;
       statusEl.textContent = 'Done';
     } catch (e) { console.error(e); statusEl.textContent = 'OCR error – see console'; }
     finally { await worker.terminate(); }
   });
 
-  // ! Auto-Tune OCR (grid search)
+  // ZONE OCR on the Auto button
   autoBtn?.addEventListener('click', async () => {
-    if (!imageFile) { statusEl.textContent = 'Please select an image first.'; return; }
-    outputEl.textContent = '';
-    statusEl.textContent = 'Auto-tuning… (this may take a bit)';
-
-    const sourceBlob = await fileToScaledBlob(imageFile);
+    if (!imageFile) { statusEl.textContent = 'Pick an image first.'; return; }
+    statusEl.textContent = 'Reading zones…';
     const worker = await createWorker('eng');
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-/().,% ',
-      preserve_interword_spaces: '1',
-      user_defined_dpi: '300',
-      tessedit_pageseg_mode: '6',
-    });
-
     try {
-      const result = await autoTuneOcr(worker, sourceBlob, {
-        maxSide: 1600,
-        multipliers: [1.0, 1.2, 1.4, 1.6, 1.8],
-        offsets: [-60, -40, -20, 0, 20],
-        thresholds: [null, 120, 140, 160],
-        stopScore: 96,
-        update: ({ step, total, params }) => {
-          statusEl.textContent = `Trying ${step}/${total} — m:${params.m} o:${params.o} t:${params.t ?? 'none'}`;
-        },
+      // (optional) show the preprocessed crops as thumbnails for debugging
+      const thumbs = await Promise.all(zones.map(async z => {
+        const b = await cropPreprocessToBlob(imageFile, z.rect, {
+          maxSide: 1600, medianK: z.medianK, multiplier: z.multiplier, offset: z.offset, threshold: z.threshold
+        });
+        return { name: z.name, url: URL.createObjectURL(b) };
+      }));
+      // OCR the zones
+      const res = await recognizeZones(worker, imageFile, zones);
+      outputEl.innerHTML =
+`code: ${res.code?.text || ''}  (conf ${Math.round(res.code?.confidence||0)})
+name: ${res.name?.text || ''}
+left: ${res.left?.text || ''}   right: ${res.right?.text || ''}
+date: ${res.date?.text || ''}
+
+[debug thumbs below]`;
+      // append thumbs
+      thumbs.forEach(t => {
+        const img = new Image(); img.src = t.url; img.style.maxWidth = '140px'; img.style.marginRight='10px';
+        const label = document.createElement('div'); label.textContent = t.name; label.style.fontSize='12px';
+        outputEl.appendChild(document.createElement('br'));
+        outputEl.appendChild(label);
+        outputEl.appendChild(img);
       });
-
-      outputEl.textContent =
-`// ! Auto-tuned OCR
-// * confidence: ${Math.round(result.confidence)}
-// * params: multiplier=${result.params.multiplier}, offset=${result.params.offset}, threshold=${result.params.threshold ?? 'none'}
-${result.text || ''}`;
-
-      statusEl.textContent = `Best of ${result.tried}/${result.total} trials`;
-    } catch (e) { console.error(e); statusEl.textContent = 'Auto-tune error – see console'; }
-    finally { await worker.terminate(); }
+      statusEl.textContent = 'Done (zones)';
+      renderOverlay();
+    } catch (e) {
+      console.error(e);
+      statusEl.textContent = 'Zone OCR error';
+    } finally {
+      await worker.terminate();
+    }
   });
 });
