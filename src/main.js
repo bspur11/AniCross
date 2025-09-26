@@ -1,6 +1,6 @@
 import './style.css';
 import { createWorker } from 'tesseract.js';
-import { recognizeZones, cropPreprocessToBlob } from './utils/ocrHelper.js';
+import { recognizeZones, cropPreprocessToBlob, zones } from './utils/ocrHelper.js';
 
 window.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.getElementById('fileInput');
@@ -13,37 +13,41 @@ window.addEventListener('DOMContentLoaded', () => {
 
   let imageFile = null;
 
-  // ONE set of zones (normalized 0–1). Tweaked for your sample:
-  const zones = [
-    // top-right number bubble “424”
-    { name:'code',  rect:{ x:0.78, y:0.045, w:0.18, h:0.12 }, psm:7, whitelist:'0123456789', medianK:3, threshold:170, multiplier:1.2, offset:-30 },
-    // main name “Isabelle”
-    { name:'name',  rect:{ x:0.15, y:0.61,  w:0.70, h:0.13 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
-    // small left name “Marie”
-    { name:'left',  rect:{ x:0.06, y:0.74,  w:0.30, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
-    // small right name “Canela”
-    { name:'right', rect:{ x:0.64, y:0.74,  w:0.30, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
-    // bottom date “12/20”
-    { name:'date',  rect:{ x:0.45, y:0.88,  w:0.18, h:0.08 }, psm:7, whitelist:'0123456789/',                            medianK:3, threshold:180, multiplier:1.2, offset:-30 },
-  ];
+  
+console.log(Array.isArray(zones), zones.length); // true 5
+console.log('name rect:', zones.find(z=>z.name==='name').rect);
 
-  function renderOverlay() {
-    if (!overlay || !preview.complete) return;
-    // get visible size of the <img>
-    const w = preview.clientWidth;
-    const h = preview.clientHeight;
-    overlay.innerHTML = '';
-    zones.forEach(z => {
-      const box = document.createElement('div');
-      box.className = 'zbox';
-      box.dataset.name = z.name;
-      box.style.left   = `${z.rect.x * w}px`;
-      box.style.top    = `${z.rect.y * h}px`;
-      box.style.width  = `${z.rect.w * w}px`;
-      box.style.height = `${z.rect.h * h}px`;
-      overlay.appendChild(box);
-    });
-  }
+
+
+ function renderOverlay() {
+  if (!overlay || !preview.complete) return;
+
+  // Anchor overlay to the image's actual displayed box
+  overlay.style.left   = preview.offsetLeft + 'px';
+  overlay.style.top    = preview.offsetTop + 'px';
+  overlay.style.width  = preview.clientWidth + 'px';
+  overlay.style.height = preview.clientHeight + 'px';
+
+  const w = preview.clientWidth;
+  const h = preview.clientHeight;
+
+  overlay.innerHTML = '';
+  zones.forEach(z => {
+    const box = document.createElement('div');
+    box.className = 'zbox';
+    box.dataset.name = z.name;
+    box.style.left   = `${z.rect.x * w}px`;
+    box.style.top    = `${z.rect.y * h}px`;
+    box.style.width  = `${z.rect.w * w}px`;
+    box.style.height = `${z.rect.h * h}px`;
+    overlay.appendChild(box);
+  });
+
+  // Debug: confirm overlay and image sizes match
+  console.log('overlay@', overlay.style.left, overlay.style.top, overlay.style.width, overlay.style.height,
+              'img@', w, h);
+}
+
 
   fileInput?.addEventListener('change', () => {
     imageFile = fileInput.files?.[0] || null;
@@ -51,7 +55,7 @@ window.addEventListener('DOMContentLoaded', () => {
     preview.src = URL.createObjectURL(imageFile);
     outputEl.textContent = '';
     statusEl.textContent = 'Ready…';
-    preview.onload = renderOverlay; // draw boxes when image is loaded
+    preview.onload = () => renderOverlay();  // draw boxes when image is loaded
   });
 
   // (kept) quick full-frame OCR

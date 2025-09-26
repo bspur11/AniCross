@@ -96,7 +96,7 @@ export async function recognizeZones(worker, sourceBlob, zones){
     await worker.setParameters({
       tessedit_pageseg_mode: String(z.psm ?? 7),
       tessedit_char_whitelist: z.whitelist ?? '',
-      tessedit_do_invert: '1',
+      tessedit_do_invert: '0',
     });
     const { data } = await worker.recognize(prep);
     results[z.name] = {
@@ -104,5 +104,22 @@ export async function recognizeZones(worker, sourceBlob, zones){
       confidence: typeof data?.confidence === 'number' ? data.confidence : 0,
     };
   }
+
   return results;
 }
+
+// put this at the very end of ocrHelper.js
+export const zones = [
+    
+    // top-right number bubble “424”
+    { name:'code',  rect:{ x:0.70, y:0.25, w:0.20, h:0.12 }, psm:7, whitelist:'0123456789', medianK:2, threshold:90, multiplier:1.15, offset:-10 },
+    // main name “Isabelle”
+    { name:'name',  rect:{ x:0.28, y:0.83,  w:0.42, h:0.075 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    // small left name “Marie”
+    { name:'left',  rect:{ x:0.04, y:0.83,  w:0.22, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    // small right name “Canela”
+    { name:'right', rect:{ x:0.72, y:0.85,  w:0.20, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    // bottom date “12/20”
+    { name:'date',  rect:{ x:0.43, y:0.92,  w:0.21, h:0.08 }, psm:7, whitelist:'0123456789/',                            medianK:3, threshold:180, multiplier:1.2, offset:-30 },
+  ];
+
