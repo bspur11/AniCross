@@ -112,9 +112,9 @@ export async function recognizeZones(worker, sourceBlob, zones){
 export const zones = [
     
     // top-right number bubble “424”
-    { name:'code',  rect:{ x:0.70, y:0.25, w:0.20, h:0.12 }, psm:7, whitelist:'0123456789', medianK:2, threshold:90, multiplier:1.15, offset:-10 },
+    { name:'code',  rect:{ x:0.80, y:0.05, w:0.20, h:0.2 }, psm:7, whitelist:'0123456789', medianK:2, threshold:70, multiplier:1.15, offset:-10 },
     // main name “Isabelle”
-    { name:'name',  rect:{ x:0.28, y:0.83,  w:0.42, h:0.075 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
+    { name:'name',  rect:{ x:0.32, y:0.83,  w:0.42, h:0.3 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
     // small left name “Marie”
     { name:'left',  rect:{ x:0.04, y:0.83,  w:0.22, h:0.08 }, psm:7, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz -', medianK:3, threshold:null, multiplier:1.2, offset:-20 },
     // small right name “Canela”
