@@ -9,7 +9,10 @@
     "server": "nodemon server/index.js",
     "client": "webpack serve --config webpack.config.js --open",
     "build": "webpack --mode production",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "lint": "eslint \"src/**/*.{js,jsx}\"",
+    "lint:fix": "eslint \"src/**/*.{js,jsx}\" --fix",
+    "format": "prettier --write ."
   },
   "keywords": [],
   "author": "bradspurrell",
@@ -22,10 +25,16 @@
     "tesseract.js": "^5.1.1"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@eslint/js": "^9.36.0",
     "concurrently": "^9.2.1",
     "css-loader": "^7.1.2",
+    "eslint": "^9.36.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.4.0",
     "html-webpack-plugin": "^5.6.4",
     "nodemon": "^3.1.10",
+    "prettier": "^3.6.2",
     "style-loader": "^4.0.0",
     "webpack": "^5.101.3",
     "webpack-cli": "^6.0.1",
